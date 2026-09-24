@@ -1,0 +1,71 @@
+name: AX native task status validation
+
+on:
+  push:
+    branches: [ci/ax-native-validation]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ax-native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ax:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    env:
+      CGO_ENABLED: '1'
+      GOTOOLCHAIN: local
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          repository: kvnloo/ax
+          ref: 86c9b886937099cbe4a9dbd0ef83dde89cdfc4f5
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
+        with:
+          go-version-file: go.mod
+      - name: Record source and toolchain
+        run: |
+          mkdir -p validation-results
+          test "$(git rev-parse HEAD)" = '86c9b886937099cbe4a9dbd0ef83dde89cdfc4f5'
+          git rev-parse HEAD > validation-results/source.txt
+          go version | tee validation-results/go-version.txt
+      - name: Run actual AX tests with race detector
+        run: |
+          go test -mod=readonly -race -count=1 -timeout=8m -json ./internal/server ./internal/store/memory ./internal/store/redis | tee validation-results/tests.jsonl
+      - name: Require package and regression completion
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          source = Path('validation-results/tests.jsonl')
+          if not source.is_file():
+              raise SystemExit('No test execution receipt was produced')
+          events = [json.loads(line) for line in source.read_text().splitlines() if line.strip()]
+          packages = {'github.com/google/ax/internal/' + name for name in ('server', 'store/memory', 'store/redis')}
+          passed = {e['Package'] for e in events if e.get('Action') == 'pass' and not e.get('Test')}
+          required = {'TestSaveTaskRetryStatus/' + name for name in ('record_disappeared', 'newer_status', 'read_failed')}
+          tests = {e['Test'] for e in events if e.get('Package') == 'github.com/google/ax/internal/store/redis' and e.get('Action') == 'pass' and e.get('Test')}
+          bad = [e for e in events if e.get('Action') == 'fail']
+          result = {'packages_passed': sorted(passed), 'retry_cases_passed': sorted(tests & required), 'failed_events': len(bad)}
+          Path('validation-results/summary.json').write_text(json.dumps(result, indent=2) + '\n')
+          print(json.dumps(result, indent=2))
+          if passed != packages or not required <= tests or bad:
+              raise SystemExit('Missing or failing AX package/regression result')
+          PY
+      - name: Preserve validation receipts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ax-native-status-validation
+          path: validation-results/
+          if-no-files-found: error
+          retention-days: 14
