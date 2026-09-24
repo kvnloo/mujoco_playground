@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.11", "3.12"]
-        rsl-rl-version: ["5.0.0", "5.5.1"]
+        rsl-rl-version: ["5.5.0", "5.5.1"]
 
     steps:
       - uses: actions/checkout@v6
