@@ -231,14 +231,22 @@ def rsl_rl_config(env_name: str, unused_impl: Optional[str] = None) -> config_di
 
   rl_config = config_dict.create(
       seed=1,
-      runner_class_name="OnPolicyRunner",
-      policy=config_dict.create(
-          init_noise_std=1.0,
-          actor_hidden_dims=[512, 256, 128],
-          critic_hidden_dims=[512, 256, 128],
-          # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
+      actor=config_dict.create(
+          class_name="MLPModel",
+          hidden_dims=[512, 256, 128],
           activation="elu",
-          class_name="ActorCritic",
+          obs_normalization=True,
+          distribution_cfg=config_dict.create(
+              class_name="GaussianDistribution",
+              init_std=1.0,
+              std_type="scalar",
+          ),
+      ),
+      critic=config_dict.create(
+          class_name="MLPModel",
+          hidden_dims=[512, 256, 128],
+          activation="elu",
+          obs_normalization=True,
       ),
       algorithm=config_dict.create(
           class_name="PPO",
@@ -258,7 +266,6 @@ def rsl_rl_config(env_name: str, unused_impl: Optional[str] = None) -> config_di
       ),
       num_steps_per_env=40,  # per iteration
       max_iterations=100000,  # number of policy updates
-      empirical_normalization=True,
       # logging
       save_interval=50,  # check for potential saves every this many iterations
       experiment_name="test",
