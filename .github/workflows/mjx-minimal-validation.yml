@@ -1,0 +1,52 @@
+name: Native MJX minimal candidates
+
+on:
+  push:
+    branches: [ci/mjx-minimal-validation]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-mjx-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.12']
+        mode: [warp, clocks]
+    env:
+      JAX_PLATFORMS: cpu
+      OMP_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install real CPU packages without standalone MuJoCo Warp
+        run: |
+          python -m pip install uv==0.12.18
+          uv pip install --system -e '.[test]' 'mujoco==3.14.0' 'mujoco-mjx==3.14.0' 'warp-lang==1.17.0' 'jax==0.10.2' 'jaxlib==0.10.2'
+          mkdir -p validation-results
+          python -m pip freeze > validation-results/packages.txt
+      - name: Prove the failure then validate the minimal candidate
+        run: python tools/fork_validation/run.py '${{ matrix.mode }}'
+      - name: Preserve logs and measured clocks even on failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: native-mjx-${{ matrix.mode }}-py${{ matrix.python }}
+          path: validation-results/
+          if-no-files-found: error
+          retention-days: 14

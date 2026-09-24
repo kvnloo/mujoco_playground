@@ -1,0 +1,48 @@
+diff --git a/mujoco_playground/_src/mjx_env.py b/mujoco_playground/_src/mjx_env.py
+--- a/mujoco_playground/_src/mjx_env.py
++++ b/mujoco_playground/_src/mjx_env.py
+@@ -138,7 +138,7 @@
+   if impl in (mjx.Impl.WARP, "warp"):
+     warn_overflow = getattr(mjx_model.opt._impl, "warn_overflow", None)
+     if isinstance(warn_overflow, int):
+-      import mujoco_warp as mjw  # pylint: disable=g-import-not-at-top
++      from mujoco.mjx.warp import mujoco_warp as mjw  # pylint: disable=g-import-not-at-top
+ 
+       # Disable solver and linesearch iteration overflow warnings, as MJX
+       # environments intentionally set them low for historical reasons
+diff --git a/mujoco_playground/_src/dm_control_suite/dm_control_suite_test.py b/mujoco_playground/_src/dm_control_suite/dm_control_suite_test.py
+--- a/mujoco_playground/_src/dm_control_suite/dm_control_suite_test.py
++++ b/mujoco_playground/_src/dm_control_suite/dm_control_suite_test.py
+@@ -13,6 +13,9 @@
+ # limitations under the License.
+ 
+ """Tests for the DM Control Suite."""
++
++import sys
++from unittest import mock
+ 
+ from absl.testing import absltest
+ from absl.testing import parameterized
+@@ -37,8 +40,9 @@
+     self.assertEqual(state.obs.shape[0], env.observation_size)
+     self.assertFalse(jp.isnan(state.data.qpos).any())
+ 
++  @mock.patch.dict(sys.modules, {"mujoco_warp": None})
+   def test_warn_overflow_filtered_warp(self) -> None:
+-    import mujoco_warp as mjw  # pylint: disable=g-import-not-at-top
++    from mujoco.mjx.warp import mujoco_warp as mjw  # pylint: disable=g-import-not-at-top
+ 
+     env = dm_control_suite.load(
+         "CartpoleBalance", config_overrides={"impl": "warp"}
+@@ -47,9 +51,10 @@
+     self.assertEqual(warn_overflow & int(mjw.OverflowType.ITERATIONS), 0)
+     self.assertEqual(warn_overflow & int(mjw.OverflowType.LS_ITERATIONS), 0)
+ 
++  @mock.patch.dict(sys.modules, {"mujoco_warp": None})
+   def test_put_model_warn_overflow_filtered_warp(self) -> None:
+     import mujoco  # pylint: disable=g-import-not-at-top
+-    import mujoco_warp as mjw  # pylint: disable=g-import-not-at-top
++    from mujoco.mjx.warp import mujoco_warp as mjw  # pylint: disable=g-import-not-at-top
+     from mujoco_playground._src import mjx_env  # pylint: disable=g-import-not-at-top
+ 
+     mj_model = mujoco.MjModel.from_xml_string("<mujoco><worldbody/></mujoco>")
