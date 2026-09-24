@@ -117,7 +117,7 @@ def main(argv):
     print(f"Using multi-GPU: local_rank={local_rank}, device={device}")
   else:
     device = _DEVICE.value
-    device_rank = int(device.split(":")[-1]) if "cuda" in device else 0
+    device_rank = int(device.split(":")[-1]) if "cuda" in device else None
 
   # If play-only, use fewer envs
   num_envs = 1 if _PLAY_ONLY.value else _NUM_ENVS.value
@@ -193,9 +193,9 @@ def main(argv):
 
   obs_size = raw_env.observation_size
   if isinstance(obs_size, dict):
-    train_cfg.obs_groups = {"policy": ["state"], "critic": ["privileged_state"]}
+    train_cfg.obs_groups = {"actor": ["state"], "critic": ["privileged_state"]}
   else:
-    train_cfg.obs_groups = {"policy": ["state"], "critic": ["state"]}
+    train_cfg.obs_groups = {"actor": ["state"], "critic": ["state"]}
 
   # Overwrite default config with flags
   train_cfg.seed = _SEED.value
