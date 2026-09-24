@@ -117,7 +117,7 @@ def main(argv):
     print(f"Using multi-GPU: local_rank={local_rank}, device={device}")
   else:
     device = _DEVICE.value
-    device_rank = int(device.split(":")[-1]) if "cuda" in device else None
+    device_rank = int(device.split(":")[-1]) if "cuda" in device else 0
 
   # If play-only, use fewer envs
   num_envs = 1 if _PLAY_ONLY.value else _NUM_ENVS.value
