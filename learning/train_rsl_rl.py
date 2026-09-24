@@ -193,9 +193,9 @@ def main(argv):
 
   obs_size = raw_env.observation_size
   if isinstance(obs_size, dict):
-    train_cfg.obs_groups = {"policy": ["state"], "critic": ["privileged_state"]}
+    train_cfg.obs_groups = {"actor": ["state"], "critic": ["privileged_state"]}
   else:
-    train_cfg.obs_groups = {"policy": ["state"], "critic": ["state"]}
+    train_cfg.obs_groups = {"actor": ["state"], "critic": ["state"]}
 
   # Overwrite default config with flags
   train_cfg.seed = _SEED.value
