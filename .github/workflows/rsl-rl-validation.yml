@@ -3,6 +3,8 @@ name: RSL-RL compatibility
 on:
   push:
     branches: [ci/rsl-rl-validation]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
