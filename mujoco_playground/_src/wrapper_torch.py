@@ -100,6 +100,8 @@ class RSLRLBraxWrapper(VecEnv):  # pyrefly: ignore[invalid-inheritance]
     self.seed = seed
     self.batch_size = num_actors
     self.num_envs = num_actors
+    # RSL-RL's logger reads the environment configuration through VecEnv.cfg.
+    self.cfg = env._config
 
     self.key = jax.random.PRNGKey(self.seed)
 
