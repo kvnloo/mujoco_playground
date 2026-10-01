@@ -1,0 +1,61 @@
+name: RSL-RL compatibility
+
+on:
+  push:
+    branches: [ci/rsl-rl-validation]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rsl-rl:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+        rsl-rl-version: ["5.5.0", "5.5.1"]
+
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install test and learning dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install uv
+          uv pip install --system -e ".[test,learning]"
+          uv pip install --system "rsl-rl-lib==${{ matrix.rsl-rl-version }}"
+
+      - name: Verify selected RSL-RL version
+        run: |
+          python - <<'PY'
+          from importlib.metadata import version
+          expected = "${{ matrix.rsl-rl-version }}"
+          actual = version("rsl-rl-lib")
+          print(f"rsl-rl-lib={actual}")
+          if actual != expected:
+              raise SystemExit(f"expected {expected}, got {actual}")
+          PY
+
+      - name: Run RSL-RL compatibility tests
+        run: |
+          pytest -q \
+            mujoco_playground/_src/rsl_rl_config_test.py \
+            mujoco_playground/_src/rsl_rl_runner_test.py
+
+      - name: Ensure runner tests executed
+        run: |
+          pytest -q -rs \
+            mujoco_playground/_src/rsl_rl_runner_test.py \
+            | tee /tmp/rsl-runner-tests.txt
+          if grep -qiE 'skipped|collected 0 items|no tests ran' /tmp/rsl-runner-tests.txt; then
+            echo "runner tests were skipped or missing" >&2
+            exit 1
+          fi
