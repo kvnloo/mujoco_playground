@@ -45,6 +45,7 @@ cuda = [
 test = [
     "absl-py",
     "dm_control",
+    "mujoco-warp>=3.12.0",
     "pytest",
     "pytest-xdist",
 ]
